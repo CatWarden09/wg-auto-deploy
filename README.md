@@ -3,9 +3,9 @@ A small script for server-side WireGuard configs automation
 
 # Requirements
 - Ubuntu 22+ (versions <22 might work but require different installation approach)
-- pipx
 - prepared WireGuard server config (.conf file, public and private server keys). Currently the script uses the hardcoded file system, future versions will allow full server setup from scratch.
-  
+
+- pipx
 ```bash
 sudo apt install -y pipx
 sudo pipx ensurepath

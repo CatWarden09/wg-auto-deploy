@@ -1,13 +1,9 @@
-import os, subprocess
+import os, subprocess, config
 
-WG_DIR = "/etc/wireguard/"
-WG_SERVER_CONFIG_PATH = "/etc/wireguard/wg0.conf"
-
-
-class NameParser:
+class DataParser:
     @staticmethod
     def parse_filename():
-        files = os.listdir(WG_DIR)
+        files = os.listdir(config.WG_DIR)
 
         client_keys = [
             f for f in files if f.startswith("client") and f.endswith("_private.key")
@@ -29,10 +25,12 @@ class NameParser:
     @staticmethod
     def parse_ip():
         clients_ips = []
-        with open(WG_SERVER_CONFIG_PATH) as f:
+        with open(config.WG_SERVER_CONFIG_PATH) as f:
             for line in f:
                 if line.startswith("AllowedIPs"):
                     ip = line.split("=")[1].strip()
+
+                    ip = ip.split("/")[0]
 
                     clients_ips.append(int(ip.split(".")[3]))
 
@@ -47,11 +45,14 @@ class NameParser:
 
 
 class AddClientCommand:
+    def run(self):
+        self.generate_private_key()
+
     def generate_private_key(self):
         print("Generating new private key...")
 
-        client_index = NameParser.parse_filename()
-        new_private_key_path = f"{WG_DIR}client{client_index}_private.key"
+        client_index = DataParser.parse_filename()
+        new_private_key_path = f"{config.WG_DIR}client{client_index}_private.key"
 
         result = subprocess.run(
             ["wg", "genkey"], capture_output=True, check=True, text=True
@@ -67,7 +68,7 @@ class AddClientCommand:
         self.generate_public_key(client_private_key, client_index)
 
     def generate_public_key(self, client_private_key, client_index):
-        new_public_key_path = f"{WG_DIR}client{client_index}_public.key"
+        new_public_key_path = f"{config.WG_DIR}client{client_index}_public.key"
 
         print("Generating new public key...")
 
@@ -91,11 +92,11 @@ class AddClientCommand:
     def create_client_config(self, client_public_key, client_private_key, client_index):
         print("Creating new client config file...")
 
-        new_client_config_path = f"{WG_DIR}client{client_index}.conf"
+        new_client_config_path = f"{config.WG_DIR}client{client_index}.conf"
 
-        server_public_key_path = f"{WG_DIR}server_public.key"
+        server_public_key_path = f"{config.WG_DIR}server_public.key"
 
-        new_client_ip = NameParser.parse_ip()
+        new_client_ip = DataParser.parse_ip()
 
         cmd = "ip addr show ens3 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1"
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
@@ -104,7 +105,7 @@ class AddClientCommand:
         with open(server_public_key_path, "r") as f:
             server_public_key = f.read().strip()
 
-        config = f"""[Interface]
+        client_config = f"""[Interface]
 PrivateKey = {client_private_key}
 Address = {new_client_ip}/24
 DNS = 8.8.8.8
@@ -116,7 +117,7 @@ PersistentKeepalive = 15
 """
 
         with open(new_client_config_path, "w") as f:
-            f.write(config)
+            f.write(client_config)
 
         self.add_peer_to_server_config(client_public_key, new_client_ip)
 
@@ -125,7 +126,7 @@ PersistentKeepalive = 15
 
         peer_block = f"\n[Peer]\nPublicKey = {client_public_key}\nAllowedIPs = {new_client_ip}/32\n"
 
-        with open(WG_SERVER_CONFIG_PATH, "a") as f:
+        with open(config.WG_SERVER_CONFIG_PATH, "a") as f:
             f.write(peer_block)
 
         print("DONE! New client successfully added")

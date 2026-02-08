@@ -1,4 +1,6 @@
-import subprocess, config, os
+import subprocess, os
+
+from . import config
 
 class QRGenerator():
     def generate_config_qr(self, client_name):

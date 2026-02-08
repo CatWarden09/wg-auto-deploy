@@ -1,4 +1,6 @@
-import os, subprocess, config
+import os, subprocess
+
+from . import config
 
 class DataParser:
     @staticmethod

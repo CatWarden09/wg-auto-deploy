@@ -1,5 +1,5 @@
 import argparse
-from commands import AddClientCommand, QRGenerator
+from .commands import AddClientCommand, QRGenerator
 
 def main():
     parser = argparse.ArgumentParser()
